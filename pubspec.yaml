@@ -1,0 +1,62 @@
+name: dokki
+description: Minimalist note-taking app.
+publish_to: 'none'
+version: 1.0.0+5
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # --- UI & Иконки ---
+  cupertino_icons: ^1.0.8
+  flutter_slidable: ^3.1.0
+  flutter_svg: ^2.0.10
+  speech_to_text: ^7.0.0
+  permission_handler: ^11.0.0
+  http: ^1.2.0
+
+  # --- База данных и Хранение ---
+  supabase_flutter: ^2.5.6
+  sqflite: ^2.3.0
+  path: ^1.9.0
+  path_provider: ^2.1.2
+  shared_preferences: ^2.2.2
+
+  # --- Бэкап и Экспорт ---
+  share_plus: ^10.0.0
+  file_picker: ^8.0.0
+  intl: ^0.19.0
+  local_auth: ^2.2.0
+  flutter_secure_storage: ^10.0.0
+  crypto: ^3.0.7
+  encrypt: ^5.0.3
+  
+  # --- Монетизация ---
+  in_app_purchase: ^3.2.0
+
+  # --- Ссылки ---
+  url_launcher: ^6.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+
+# Конфигурация иконок
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  image_path: "assets/app_icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/app_icon.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/logo.png
+    - assets/app_icon.png

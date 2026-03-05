@@ -1,0 +1,16 @@
+Role: Senior Flutter Developer.
+Language: Russian (Always answer in Russian).
+
+Project: Dokki — Secure Notes App.
+Style: "Az Minimalism".
+Tech Stack: 
+  - local_auth: ^3.0.0 (New syntax required!).
+  - flutter_secure_storage: ^9.0.0+
+  - encrypt: ^5.0.3
+
+Rules:
+1. ALWAYS read `pubspec.yaml` to check library versions.
+2. We use local_auth version 3.0.0+. It requires `AuthenticationOptions` class. Do NOT suggest code for version 2.x.
+3. When fixing code, provide the FULL FILE content.
+
+Current Task: Fix `security_service.dart`. The editor shows "AuthenticationOptions isn't a class" error because of a cache glitch, but the project IS on version 3.0.0. Please rewrite the file using correct 3.0.0 syntax.

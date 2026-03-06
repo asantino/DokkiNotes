@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/prefs_service.dart';
@@ -8,6 +7,11 @@ import '../main.dart'; // Для доступа к AppInitScreen
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
+  // Assets defined here
+  static const String _assetPage1 = 'assets/images/onboarding_ai_voice.png';
+  static const String _assetPage2 = 'assets/images/onboarding_auto_delete.png';
+  static const String _assetPage3 = 'assets/images/onboarding_sync.png';
+
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
@@ -16,25 +20,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  // English data for onboarding pages
+  // Updated onboarding page data using assets and new metaphor
   final List<OnboardingData> _pages = [
     OnboardingData(
-      icon: CupertinoIcons.doc_text,
-      iconColor: DokkiColors.primaryTeal,
+      assetPath: OnboardingScreen._assetPage1,
       title: 'DokkiNotes',
-      description: 'Notes that\ndisappear on their own',
+      description:
+          'AI-Powered Voice Notes. Speak, transcribe, smartly categorize.',
     ),
     OnboardingData(
-      icon: CupertinoIcons.timer,
-      iconColor: Colors.orange,
+      assetPath: OnboardingScreen._assetPage2,
       title: 'Auto-delete',
-      description: 'Notes delete themselves\nafter 1 or 24 hours',
+      description: 'Notes delete themselves after 1 or 24 hours',
     ),
     OnboardingData(
-      icon: CupertinoIcons.cloud,
-      iconColor: DokkiColors.primaryTeal,
+      assetPath: OnboardingScreen._assetPage3,
       title: 'Sync',
-      description: 'Encrypted cloud\nfor free',
+      description: 'Encrypted cloud for free',
     ),
   ];
 
@@ -191,14 +193,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 }
 
 class OnboardingData {
-  final IconData icon;
-  final Color iconColor;
+  final String assetPath;
   final String title;
   final String description;
 
   OnboardingData({
-    required this.icon,
-    required this.iconColor,
+    required this.assetPath,
     required this.title,
     required this.description,
   });
@@ -219,29 +219,10 @@ class OnboardingPage extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            data.icon,
-            size: 120,
-            color: data.iconColor,
-          ),
-          const SizedBox(height: 48),
-          Text(
-            data.title,
-            style: const TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            data.description,
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey.withValues(alpha: 0.7),
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
+          Image.asset(
+            data.assetPath,
+            height: MediaQuery.of(context).size.height * 0.6,
+            fit: BoxFit.contain,
           ),
         ],
       ),

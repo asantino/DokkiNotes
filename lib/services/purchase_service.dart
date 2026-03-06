@@ -101,7 +101,8 @@ class PurchaseService {
         // Для восстановленных покупок только завершаем транзакцию
         if (purchaseDetails.pendingCompletePurchase) {
           await _iap.completePurchase(purchaseDetails);
-          debugPrint('✅ Restored purchase completed: ${purchaseDetails.purchaseID}');
+          debugPrint(
+              '✅ Restored purchase completed: ${purchaseDetails.purchaseID}');
         }
       }
     }
@@ -110,13 +111,16 @@ class PurchaseService {
   Future<void> _handlePurchaseSuccess(PurchaseDetails details) async {
     final purchaseId = details.purchaseID ?? '';
     if (_processedPurchaseIds.contains(purchaseId)) {
-      debugPrint('⚠️ Duplicate purchase ignored: $purchaseId');
+      debugPrint("⚠️ Duplicate purchase ignored: $purchaseId");
+      debugPrint("📋 Processed IDs: $_processedPurchaseIds");
       if (details.pendingCompletePurchase) {
         await _iap.completePurchase(details);
       }
       return;
     }
     _processedPurchaseIds.add(purchaseId);
+    debugPrint(
+        "🆕 New purchase: $purchaseId | processed set: $_processedPurchaseIds");
 
     if (details.pendingCompletePurchase) {
       try {

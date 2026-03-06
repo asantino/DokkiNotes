@@ -11,27 +11,26 @@ class DBService {
   static Database? _database;
   static final DBService db = DBService._internal();
 
-  String? _cachedPin;
+  String? _cachedKey;
 
   factory DBService() => db;
 
   DBService._internal();
 
-  void setCachedPin(String? pin) {
-    _cachedPin = pin;
+  void setEncryptionKey(String? key) {
+    _cachedKey = key;
   }
 
-  String? getCachedPin() {
-    return _cachedPin;
+  String? getEncryptionKey() {
+    return _cachedKey;
   }
 
   Future<void> loadPinFromStorage(String pin) async {
-    _cachedPin = pin;
+    // Временно оставляем для совместимости, но логика изменится
+    _cachedKey = pin;
   }
 
-  bool isPinCached() {
-    return _cachedPin != null;
-  }
+  bool get hasKey => _cachedKey != null;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -103,11 +102,11 @@ class DBService {
     final hasPin = await pinService.hasPin();
 
     int result;
-    if (hasPin && _cachedPin != null) {
+    if (hasPin && hasKey) {
       final encryptedNote = Note(
         id: note.id,
-        title: encryptionService.encryptText(note.title, _cachedPin!),
-        content: encryptionService.encryptText(note.content, _cachedPin!),
+        title: encryptionService.encryptText(note.title),
+        content: encryptionService.encryptText(note.content),
         createdAt: note.createdAt,
         expiresAt: note.expiresAt,
         destructTime: note.destructTime,
@@ -145,13 +144,13 @@ class DBService {
     final notes = List.generate(maps.length, (i) => Note.fromMap(maps[i]));
     final hasPin = await pinService.hasPin();
 
-    if (hasPin && _cachedPin != null) {
+    if (hasPin && hasKey) {
       return notes.map((note) {
         try {
           return Note(
             id: note.id,
-            title: encryptionService.decryptText(note.title, _cachedPin!),
-            content: encryptionService.decryptText(note.content, _cachedPin!),
+            title: encryptionService.decryptText(note.title),
+            content: encryptionService.decryptText(note.content),
             createdAt: note.createdAt,
             expiresAt: note.expiresAt,
             destructTime: note.destructTime,
@@ -174,11 +173,11 @@ class DBService {
     final hasPin = await pinService.hasPin();
 
     int result;
-    if (hasPin && _cachedPin != null) {
+    if (hasPin && hasKey) {
       final encryptedNote = Note(
         id: note.id,
-        title: encryptionService.encryptText(note.title, _cachedPin!),
-        content: encryptionService.encryptText(note.content, _cachedPin!),
+        title: encryptionService.encryptText(note.title),
+        content: encryptionService.encryptText(note.content),
         createdAt: note.createdAt,
         expiresAt: note.expiresAt,
         destructTime: note.destructTime,
@@ -255,13 +254,13 @@ class DBService {
     final notes = List.generate(maps.length, (i) => Note.fromMap(maps[i]));
     final hasPin = await pinService.hasPin();
 
-    if (hasPin && _cachedPin != null) {
+    if (hasPin && hasKey) {
       return notes.map((note) {
         try {
           return Note(
             id: note.id,
-            title: encryptionService.decryptText(note.title, _cachedPin!),
-            content: encryptionService.decryptText(note.content, _cachedPin!),
+            title: encryptionService.decryptText(note.title),
+            content: encryptionService.decryptText(note.content),
             createdAt: note.createdAt,
             expiresAt: note.expiresAt,
             destructTime: note.destructTime,
@@ -294,6 +293,8 @@ class DBService {
     );
   }
 
+  // TODO: Эти методы (export/import) все еще принимают 'pin'
+  // и зависят от устаревших методов EncryptionService
   Future<String?> exportEncryptedDatabase(String pin) async {
     try {
       debugPrint('🔐 ========== EXPORT DATABASE START ==========');

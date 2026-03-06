@@ -104,7 +104,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       if (pin != null && pin.length >= 4) {
         await pinService.setPin(pin);
-        DBService.db.setCachedPin(pin);
+
+        // --- Изменение 1 ---
+        encryptionService.init(pin);
+        DBService.db.setEncryptionKey(pin);
+        // -------------------
+
         syncStatusService.updateStatus(SyncStatus.uploading);
         final vaultPath = await DBService.db.exportEncryptedDatabase(pin);
 
@@ -114,7 +119,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         } else {
           syncStatusService.updateStatus(SyncStatus.error);
           await pinService.deletePin();
-          DBService.db.setCachedPin(null);
+
+          // --- Изменение 2 ---
+          DBService.db.setEncryptionKey(null);
+          // -------------------
+
           if (mounted) {
             await _showErrorDialog();
             syncStatusService.updateStatus(SyncStatus.disabled);
@@ -140,7 +149,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             if (mounted) await _showErrorDialog();
             return;
           }
-          DBService.db.setCachedPin(null);
+
+          // --- Изменение 3 ---
+          DBService.db.setEncryptionKey(null);
+          encryptionService.clearKey();
+          // -------------------
+
           await _decryptAllNotes(pin);
           await pinService.deletePin();
           try {
@@ -207,19 +221,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // --- Изменение 4 ---
   Future<void> _decryptAllNotes(String pin) async {
+    encryptionService.init(pin);
     final allNotes = await DBService.db.getAllNotes();
     final trashNotes = await DBService.db.getTrashNotes();
     final notes = [...allNotes, ...trashNotes];
     for (var note in notes) {
       try {
-        final title = EncryptionService().decryptText(note.title, pin);
-        final content = EncryptionService().decryptText(note.content, pin);
+        final title = encryptionService.decryptText(note.title);
+        final content = encryptionService.decryptText(note.content);
         await DBService.db
             .updateNote(note.copyWith(title: title, content: content));
       } catch (_) {}
     }
+    encryptionService.clearKey();
   }
+  // -------------------
 
   Future<void> _loadTrashCount() async {
     final trashNotes = await DBService.db.getTrashNotes();

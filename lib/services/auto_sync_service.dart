@@ -38,22 +38,22 @@ class AutoSyncService {
   Future<void> _performSync() async {
     try {
       debugPrint('📤 ========== AUTO-SYNC START ==========');
-      debugPrint('🔍 Getting cached PIN...');
+      debugPrint('🔍 Getting cached key...');
 
-      // Получаем PIN из кэша
-      final pin = DBService.db.getCachedPin();
+      // Получаем ключ из кэша
+      final key = DBService.db.getEncryptionKey();
 
-      if (pin == null) {
-        debugPrint('❌ Auto-sync failed: No cached PIN');
+      if (key == null) {
+        debugPrint('❌ Auto-sync failed: No encryption key');
         syncStatusService.updateStatus(SyncStatus.error);
         return;
       }
 
-      debugPrint('✅ PIN retrieved from cache');
+      debugPrint('✅ Encryption key retrieved from cache');
       debugPrint('🔐 Exporting encrypted database...');
 
       // Экспортируем зашифрованную БД
-      final vaultPath = await DBService.db.exportEncryptedDatabase(pin);
+      final vaultPath = await DBService.db.exportEncryptedDatabase(key);
 
       // ИСПРАВЛЕНО: prefer_if_null_operators
       debugPrint('🔍 Export result: ${vaultPath ?? "NULL"}');

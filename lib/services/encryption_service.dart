@@ -9,13 +9,23 @@ class EncryptionService {
   factory EncryptionService() => _instance;
   EncryptionService._internal();
 
+  enc.Key? _cachedKey;
+
+  void init(String password) {
+    _cachedKey = _generateKey(password);
+  }
+
+  void clearKey() {
+    _cachedKey = null;
+  }
+
   // Константы для алгоритма AES-256 (Исправлено на const согласно prefer_const_declarations)
   static const int _keyLength = 32;
   static const int _ivLength = 16;
   static const String _salt = 'dokki_salt_2026';
   static const int _iterations = 100000;
 
-  // Генерация ключа из PIN через PBKDF2 (имитация)
+  // Генерация ключа из PIN/пароля через PBKDF2
   enc.Key _generateKey(String pin) {
     final saltBytes = utf8.encode(_salt);
 
@@ -91,19 +101,17 @@ class EncryptionService {
   }
 
   // Шифрование текста
-  String encryptText(String text, String pin) {
+  String encryptText(String text) {
+    if (_cachedKey == null) {
+      throw Exception('EncryptionService not initialized');
+    }
     try {
-      final key = _generateKey(pin);
       final iv = _generateIV();
-
-      final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc));
+      final encrypter =
+          enc.Encrypter(enc.AES(_cachedKey!, mode: enc.AESMode.cbc));
+// ...
       final encrypted = encrypter.encrypt(text, iv: iv);
-
-      final combined = Uint8List.fromList([
-        ...iv.bytes,
-        ...encrypted.bytes,
-      ]);
-
+      final combined = Uint8List.fromList([...iv.bytes, ...encrypted.bytes]);
       return base64.encode(combined);
     } catch (e) {
       throw Exception('Encryption failed: $e');
@@ -111,17 +119,18 @@ class EncryptionService {
   }
 
   // Расшифровка текста
-  String decryptText(String encryptedText, String pin) {
+  String decryptText(String encryptedText) {
+    if (_cachedKey == null) {
+      throw Exception('EncryptionService not initialized');
+    }
     try {
       final combined = base64.decode(encryptedText);
       if (combined.length < _ivLength) throw Exception('Invalid data');
-
+// ...
       final iv = enc.IV(Uint8List.fromList(combined.take(_ivLength).toList()));
       final encryptedBytes = combined.skip(_ivLength).toList();
-
-      final key = _generateKey(pin);
-      final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc));
-
+      final encrypter =
+          enc.Encrypter(enc.AES(_cachedKey!, mode: enc.AESMode.cbc));
       return encrypter.decrypt(
         enc.Encrypted(Uint8List.fromList(encryptedBytes)),
         iv: iv,

@@ -65,9 +65,11 @@ class VoiceService {
   void _onStatus(String status) {
     debugPrint('🎤 STT Status: $status');
     if (status == 'notListening' || status == 'done') {
-      if (_completer != null && !_completer!.isCompleted) {
-        _completer!.complete(_recognizedText);
-      }
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (_completer != null && !_completer!.isCompleted) {
+          _completer!.complete(_recognizedText);
+        }
+      });
     }
     if (status == 'error') {
       _isInitialized = false;
@@ -93,9 +95,8 @@ class VoiceService {
     _completer = Completer<String>();
 
     await _speech.listen(
-      onResult: (result) {
+      onResult: (result) async {
         _recognizedText = result.recognizedWords;
-        // Добавлено расширенное логирование
         debugPrint(
             '🗣️ Partial: ${result.recognizedWords} | final: ${result.finalResult}');
 
@@ -104,6 +105,7 @@ class VoiceService {
         }
 
         if (result.finalResult && !_completer!.isCompleted) {
+          await Future.delayed(const Duration(milliseconds: 500));
           _completer!.complete(_recognizedText);
         }
       },
@@ -112,7 +114,7 @@ class VoiceService {
         cancelOnError: true,
         partialResults: true,
       ),
-      pauseFor: const Duration(seconds: 3),
+      pauseFor: const Duration(seconds: 5),
     );
 
     return _completer!.future;

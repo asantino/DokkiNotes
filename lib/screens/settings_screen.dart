@@ -1,19 +1,14 @@
-import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:path/path.dart' as path_helper;
-import 'package:sqflite/sqflite.dart';
 import '../services/prefs_service.dart';
 import '../services/security_service.dart';
 import '../services/db_service.dart';
-import '../services/pin_service.dart';
 import '../services/sync_status_service.dart';
-import '../services/encryption_service.dart';
+import '../services/google_drive_service.dart';
 import '../services/auth_service.dart';
 import '../services/railway_service.dart';
 import '../theme/dokki_theme.dart';
-import '../widgets/pin_input_dialog.dart';
 import '../widgets/ai_mic_icon.dart';
 import 'trash_screen.dart';
 import 'auth_screen.dart';
@@ -81,163 +76,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSyncState() async {
-    final hasPin = await pinService.hasPin();
-    if (mounted) {
-      setState(() {
-        _isSyncEnabled = hasPin;
-      });
-    }
+    final signedIn = await GoogleDriveService().isSignedIn();
+    if (mounted) setState(() => _isSyncEnabled = signedIn);
   }
 
   Future<void> _toggleSync(bool value) async {
     if (!mounted) return;
-
     if (value) {
-      final pin = await showDialog<String>(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) => const PinInputDialog(
-          title: 'Create PIN (4-8 digits)',
-          isConfirmation: true,
-        ),
+      final success = await GoogleDriveService().signIn();
+      if (!success) {
+        if (mounted) syncStatusService.updateStatus(SyncStatus.error);
+        return;
+      }
+      syncStatusService.updateStatus(SyncStatus.uploading);
+      final uploaded = await GoogleDriveService().uploadNotes();
+      syncStatusService.updateStatus(
+        uploaded ? SyncStatus.synced : SyncStatus.error,
       );
-
-      if (pin != null && pin.length >= 4) {
-        await pinService.setPin(pin);
-
-        // --- Изменение 1 ---
-        encryptionService.init(pin);
-        DBService.db.setEncryptionKey(pin);
-        // -------------------
-
-        syncStatusService.updateStatus(SyncStatus.uploading);
-        final vaultPath = await DBService.db.exportEncryptedDatabase(pin);
-
-        if (vaultPath != null) {
-          syncStatusService.updateStatus(SyncStatus.synced);
-          if (mounted) setState(() => _isSyncEnabled = true);
-        } else {
-          syncStatusService.updateStatus(SyncStatus.error);
-          await pinService.deletePin();
-
-          // --- Изменение 2 ---
-          DBService.db.setEncryptionKey(null);
-          // -------------------
-
-          if (mounted) {
-            await _showErrorDialog();
-            syncStatusService.updateStatus(SyncStatus.disabled);
-          }
-        }
-      }
+      if (mounted) setState(() => _isSyncEnabled = uploaded);
     } else {
-      final confirmed = await _showDisableSyncConfirm();
-      if (confirmed == true) {
-        if (!mounted) return;
-        final pin = await showDialog<String>(
-          context: context,
-          barrierDismissible: false,
-          builder: (dialogContext) => const PinInputDialog(
-            title: 'Enter PIN for decryption',
-            isConfirmation: false,
-          ),
-        );
-
-        if (pin != null) {
-          final isValid = await pinService.verifyPin(pin);
-          if (!isValid) {
-            if (mounted) await _showErrorDialog();
-            return;
-          }
-
-          // --- Изменение 3 ---
-          DBService.db.setEncryptionKey(null);
-          encryptionService.clearKey();
-          // -------------------
-
-          await _decryptAllNotes(pin);
-          await pinService.deletePin();
-          try {
-            final dbPath = await getDatabasesPath();
-            final vaultFile = File(path_helper.join(dbPath, 'dokki_vault.enc'));
-            if (await vaultFile.exists()) await vaultFile.delete();
-          } catch (_) {}
-          syncStatusService.updateStatus(SyncStatus.disabled);
-          if (mounted) setState(() => _isSyncEnabled = false);
-        }
-      }
+      await GoogleDriveService().signOut();
+      syncStatusService.updateStatus(SyncStatus.disabled);
+      if (mounted) setState(() => _isSyncEnabled = false);
     }
   }
-
-  Future<void> _showErrorDialog() async {
-    if (!mounted) return;
-    return showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).dialogTheme.backgroundColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: const Padding(
-          padding: EdgeInsets.symmetric(vertical: 48, horizontal: 24),
-          child: Icon(Icons.error_outline, color: Colors.red, size: 80),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: Icon(CupertinoIcons.checkmark_circle_fill,
-                color: Colors.grey.withValues(alpha: 0.7), size: 48),
-          ),
-        ],
-        actionsAlignment: MainAxisAlignment.center,
-      ),
-    );
-  }
-
-  Future<bool?> _showDisableSyncConfirm() async {
-    if (!mounted) return false;
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).dialogTheme.backgroundColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: const Padding(
-          padding: EdgeInsets.symmetric(vertical: 48, horizontal: 24),
-          child: Icon(Icons.cloud_off, color: Colors.red, size: 80),
-        ),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          IconButton(
-            onPressed: () => Navigator.pop(context, false),
-            icon: Icon(CupertinoIcons.xmark_circle,
-                color: Colors.grey.withValues(alpha: 0.7), size: 48),
-          ),
-          const SizedBox(width: 48),
-          IconButton(
-            onPressed: () => Navigator.pop(context, true),
-            icon: const Icon(CupertinoIcons.checkmark_circle_fill,
-                color: Colors.red, size: 48),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- Изменение 4 ---
-  Future<void> _decryptAllNotes(String pin) async {
-    encryptionService.init(pin);
-    final allNotes = await DBService.db.getAllNotes();
-    final trashNotes = await DBService.db.getTrashNotes();
-    final notes = [...allNotes, ...trashNotes];
-    for (var note in notes) {
-      try {
-        final title = encryptionService.decryptText(note.title);
-        final content = encryptionService.decryptText(note.content);
-        await DBService.db
-            .updateNote(note.copyWith(title: title, content: content));
-      } catch (_) {}
-    }
-    encryptionService.clearKey();
-  }
-  // -------------------
 
   Future<void> _loadTrashCount() async {
     final trashNotes = await DBService.db.getTrashNotes();

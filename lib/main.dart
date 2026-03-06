@@ -11,6 +11,7 @@ import 'services/db_service.dart';
 import 'services/auto_sync_service.dart';
 import 'widgets/pin_input_dialog.dart';
 import 'theme/dokki_theme.dart';
+import 'services/purchase_service.dart';
 
 void main() async {
   // 1. Обязательная привязка для работы асинхронных вызовов
@@ -33,6 +34,8 @@ void main() async {
   debugPrint('🔄 Initializing preferences...');
   await prefs.init();
   debugPrint('✅ Preferences initialized');
+  await PurchaseService.instance.initialize();
+  debugPrint('✅ PurchaseService initialized');
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

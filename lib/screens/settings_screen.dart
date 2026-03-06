@@ -367,8 +367,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 colorFilter: ColorFilter.mode(
                     Colors.grey.withValues(alpha: 0.65), BlendMode.srcIn),
               ),
-              right: IconButton(
-                icon: SvgPicture.asset(
+              right: GestureDetector(
+                onTap: () => setState(() =>
+                    prefs.sortType = prefs.sortType == 'desc' ? 'az' : 'desc'),
+                child: SvgPicture.asset(
                   prefs.sortType == 'desc'
                       ? 'assets/icons/calendar.svg'
                       : 'assets/icons/sort_az.svg',
@@ -377,9 +379,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   colorFilter: const ColorFilter.mode(
                       DokkiColors.primaryTeal, BlendMode.srcIn),
                 ),
-                onPressed: () => setState(() =>
-                    prefs.sortType = prefs.sortType == 'desc' ? 'az' : 'desc'),
-                splashRadius: 22,
               ),
             ),
             const SizedBox(height: 32),

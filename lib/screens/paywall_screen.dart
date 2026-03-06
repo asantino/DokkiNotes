@@ -23,7 +23,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
   }
 
   Future<void> _initData() async {
-    await PurchaseService.instance.initialize();
     await _loadBalance();
     if (mounted) {
       setState(() {

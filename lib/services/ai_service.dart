@@ -32,7 +32,7 @@ class AIService {
                 ...conversationHistory,
                 {"role": "user", "content": userMessage}
               ],
-              "max_tokens": 150,
+              "max_tokens": 1000,
               "temperature": 0.7
             }),
           )

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:local_auth/local_auth.dart';
@@ -61,6 +62,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _initApp() async {
     DBService.db.checkSelfDestruction();
+    if (prefs.isBiometricEnabled) {
+      final authenticated = await _authenticate();
+      if (!authenticated) {
+        if (mounted) SystemNavigator.pop();
+        return;
+      }
+    }
     await _loadNotes();
   }
 
@@ -166,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!AuthService.instance.isAuthenticated) return;
 
     final balance = await RailwayService.instance.checkBalance();
-    if (balance < 2) return;
+    if (balance < 1) return;
 
     StateSetter? dialogSetState;
     String dialogText = "Initializing...";
@@ -243,7 +251,7 @@ class _HomeScreenState extends State<HomeScreen> {
           'model': 'gpt-4o-mini',
           'message_length': userMessage.length,
         });
-        debugPrint('✅ 2 tokens deducted');
+        debugPrint('✅ 1 token deducted');
       } catch (e) {
         debugPrint('❌ Deduction error: $e');
       }
@@ -279,7 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
           MaterialPageRoute(
             builder: (context) => NoteEditorScreen(
               note: notesList.first,
-              isAiMode: true, // Единственное примененное изменение
+              isAiMode: true,
             ),
           ),
         ).then((_) => _refresh());

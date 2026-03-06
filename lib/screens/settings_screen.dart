@@ -140,9 +140,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             if (mounted) await _showErrorDialog();
             return;
           }
+          DBService.db.setCachedPin(null);
           await _decryptAllNotes(pin);
           await pinService.deletePin();
-          DBService.db.setCachedPin(null);
           try {
             final dbPath = await getDatabasesPath();
             final vaultFile = File(path_helper.join(dbPath, 'dokki_vault.enc'));

@@ -94,9 +94,15 @@ class PurchaseService {
         debugPrint('Purchase pending: ${purchaseDetails.productID}');
       } else if (purchaseDetails.status == PurchaseStatus.error) {
         debugPrint('Purchase error: ${purchaseDetails.error}');
-      } else if (purchaseDetails.status == PurchaseStatus.purchased ||
-          purchaseDetails.status == PurchaseStatus.restored) {
+      } else if (purchaseDetails.status == PurchaseStatus.purchased) {
+        // Только для новых покупок начисляем токены
         await _handlePurchaseSuccess(purchaseDetails);
+      } else if (purchaseDetails.status == PurchaseStatus.restored) {
+        // Для восстановленных покупок только завершаем транзакцию
+        if (purchaseDetails.pendingCompletePurchase) {
+          await _iap.completePurchase(purchaseDetails);
+          debugPrint('✅ Restored purchase completed: ${purchaseDetails.purchaseID}');
+        }
       }
     }
   }

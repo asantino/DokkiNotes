@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
@@ -6,12 +7,15 @@ import '../models/note.dart';
 import 'encryption_service.dart';
 import 'pin_service.dart';
 import 'auto_sync_service.dart';
+import 'google_drive_service.dart';
 
 class DBService {
   static Database? _database;
   static final DBService db = DBService._internal();
 
   String? _cachedKey;
+  Timer? _syncDebounce;
+  bool _googleSyncEnabled = false;
 
   factory DBService() => db;
 
@@ -23,6 +27,19 @@ class DBService {
 
   String? getEncryptionKey() {
     return _cachedKey;
+  }
+
+  void setGoogleSyncEnabled(bool value) {
+    _googleSyncEnabled = value;
+  }
+
+  void _scheduleSync() {
+    if (!_googleSyncEnabled) return;
+    _syncDebounce?.cancel();
+    _syncDebounce = Timer(const Duration(seconds: 3), () async {
+      final signedIn = await GoogleDriveService().isSignedIn();
+      if (signedIn) await GoogleDriveService().uploadNotes();
+    });
   }
 
   Future<void> loadPinFromStorage(String pin) async {
@@ -130,6 +147,7 @@ class DBService {
       debugPrint('⏭️  No PIN, skipping sync');
     }
 
+    _scheduleSync();
     return result;
   }
 
@@ -211,6 +229,7 @@ class DBService {
       debugPrint('⏭️  No PIN, skipping sync');
     }
 
+    _scheduleSync();
     return result;
   }
 
@@ -225,6 +244,7 @@ class DBService {
       ''',
       [nowIso],
     );
+    _scheduleSync();
   }
 
   Future<int> togglePin(int id) async {
@@ -234,16 +254,20 @@ class DBService {
     if (list.isNotEmpty) {
       int currentStatus = list.first['is_pinned'] as int? ?? 0;
       int newStatus = (currentStatus == 1) ? 0 : 1;
-      return await db.update('notes', {'is_pinned': newStatus},
+      int result = await db.update('notes', {'is_pinned': newStatus},
           where: 'id = ?', whereArgs: [id]);
+      _scheduleSync();
+      return result;
     }
     return 0;
   }
 
   Future<int> moveToTrash(int id) async {
     final db = await database;
-    return await db.update('notes', {'is_trash': 1},
+    int result = await db.update('notes', {'is_trash': 1},
         where: 'id = ?', whereArgs: [id]);
+    _scheduleSync();
+    return result;
   }
 
   Future<List<Note>> getTrashNotes() async {
@@ -280,17 +304,21 @@ class DBService {
 
   Future<int> restoreNote(int id) async {
     final db = await database;
-    return await db.update('notes', {'is_trash': 0},
+    int result = await db.update('notes', {'is_trash': 0},
         where: 'id = ?', whereArgs: [id]);
+    _scheduleSync();
+    return result;
   }
 
   Future<int> deleteNoteForever(int id) async {
     final db = await database;
-    return await db.delete(
+    int result = await db.delete(
       'notes',
       where: 'id = ?',
       whereArgs: [id],
     );
+    _scheduleSync();
+    return result;
   }
 
   // TODO: Эти методы (export/import) все еще принимают 'pin'

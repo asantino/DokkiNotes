@@ -4,7 +4,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:http/http.dart' as http;
 
-// Новые импорты
 import '../models/note.dart';
 import 'db_service.dart';
 import 'encryption_service.dart';
@@ -25,8 +24,13 @@ class GoogleDriveService {
     try {
       final account = await _googleSignIn.signIn();
       if (account == null) return false;
+
       final auth = await account.authentication;
-      final client = _AuthClient(auth.accessToken!);
+      final token = auth.accessToken;
+
+      if (token == null) return false;
+
+      final client = _AuthClient(token);
       _driveApi = drive.DriveApi(client);
       return true;
     } catch (e) {
@@ -98,14 +102,15 @@ class GoogleDriveService {
     return list.files?.firstOrNull?.id;
   }
 
-  // Новые методы
   Future<bool> uploadNotes() async {
     try {
       if (_driveApi == null) return false;
+
       final notes = await DBService.db.getAllNotes();
       final trashNotes = await DBService.db.getTrashNotes();
       final allNotes = [...notes, ...trashNotes];
       final jsonStr = jsonEncode(allNotes.map((n) => n.toMap()).toList());
+
       final encrypted = encryptionService.encryptText(jsonStr);
       return await uploadBackup(encrypted);
     } catch (e) {
@@ -117,10 +122,13 @@ class GoogleDriveService {
   Future<bool> downloadAndRestoreNotes() async {
     try {
       if (_driveApi == null) return false;
+
       final encrypted = await downloadBackup();
       if (encrypted == null) return false;
+
       final jsonStr = encryptionService.decryptText(encrypted);
       final List<dynamic> jsonList = jsonDecode(jsonStr);
+
       for (var item in jsonList) {
         final note = Note.fromMap(item);
         await DBService.db.addNote(Note(

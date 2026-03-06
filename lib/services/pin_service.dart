@@ -9,6 +9,7 @@ class PinService {
 
   final _storage = const FlutterSecureStorage();
   static const _pinKey = 'dokki_user_pin';
+  static const _pinRawKey = 'dokki_user_pin_raw';
 
   // Проверка, установлен ли PIN
   Future<bool> hasPin() async {
@@ -16,10 +17,11 @@ class PinService {
     return pin != null;
   }
 
-  // Сохранить PIN (хешированный)
+  // Сохранить PIN (хешированный) и raw PIN
   Future<void> setPin(String pin) async {
     final hash = _hashPin(pin);
     await _storage.write(key: _pinKey, value: hash);
+    await _storage.write(key: _pinRawKey, value: pin);
   }
 
   // Проверить PIN
@@ -31,9 +33,25 @@ class PinService {
     return storedHash == inputHash;
   }
 
-  // Удалить PIN
+  // Удалить PIN и raw PIN
   Future<void> deletePin() async {
     await _storage.delete(key: _pinKey);
+    await _storage.delete(key: _pinRawKey);
+  }
+
+  // Сохранить raw PIN для биометрии
+  Future<void> setPinRaw(String pin) async {
+    await _storage.write(key: _pinRawKey, value: pin);
+  }
+
+  // Получить raw PIN после успешной биометрии
+  Future<String?> getPinRaw() async {
+    return await _storage.read(key: _pinRawKey);
+  }
+
+  // Удалить raw PIN
+  Future<void> deletePinRaw() async {
+    await _storage.delete(key: _pinRawKey);
   }
 
   // Хеширование PIN
@@ -48,7 +66,7 @@ class PinService {
   Future<String?> getPinForEncryption(String inputPin) async {
     final isValid = await verifyPin(inputPin);
     if (!isValid) return null;
-    return inputPin; // Возвращаем оригинальный PIN для использования в шифровании
+    return inputPin;
   }
 }
 

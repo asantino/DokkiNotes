@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:local_auth/local_auth.dart';
@@ -62,13 +61,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _initApp() async {
     DBService.db.checkSelfDestruction();
-    if (prefs.isBiometricEnabled) {
-      final authenticated = await _authenticate();
-      if (!authenticated) {
-        if (mounted) SystemNavigator.pop();
-        return;
-      }
-    }
     await _loadNotes();
   }
 

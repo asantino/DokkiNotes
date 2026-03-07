@@ -60,11 +60,17 @@ class GoogleDriveService {
         ..parents = ['appDataFolder'];
 
       final existing = await _findBackupFile(api);
+
+      // Лог состояния перед отправкой
+      debugPrint('☁️ uploadBackup: bytes=${bytes.length}, existing=$existing');
+
       if (existing != null) {
         await api.files.update(drive.File(), existing, uploadMedia: media);
       } else {
         await api.files.create(meta, uploadMedia: media);
       }
+
+      debugPrint('☁️ uploadBackup success');
       return true;
     } catch (e) {
       debugPrint('GoogleDrive upload error: $e');
@@ -103,7 +109,10 @@ class GoogleDriveService {
   }
 
   Future<bool> uploadNotes() async {
+    debugPrint(
+        '📤 uploadNotes: driveApi=${_driveApi != null}, keyInit=${encryptionService.isInitialized}');
     try {
+      if (!encryptionService.isInitialized) return false;
       if (_driveApi == null) return false;
 
       final notes = await DBService.db.getAllNotes();

@@ -19,32 +19,28 @@ class EncryptionService {
     _cachedKey = null;
   }
 
-  // Константы для алгоритма AES-256 (Исправлено на const согласно prefer_const_declarations)
+  bool get isInitialized => _cachedKey != null;
+
   static const int _keyLength = 32;
   static const int _ivLength = 16;
   static const String _salt = 'dokki_salt_2026';
   static const int _iterations = 100000;
 
-  // Генерация ключа из PIN/пароля через PBKDF2
   enc.Key _generateKey(String pin) {
     final saltBytes = utf8.encode(_salt);
 
-    // Реализация усиления ключа через многократное хеширование
     List<int> key = utf8.encode(pin + String.fromCharCodes(saltBytes));
     for (int i = 0; i < _iterations; i++) {
       key = sha256.convert(key).bytes;
     }
 
-    // Берем первые 32 байта для AES-256
     return enc.Key(Uint8List.fromList(key.take(_keyLength).toList()));
   }
 
-  // Генерация случайного IV
   enc.IV _generateIV() {
     return enc.IV.fromSecureRandom(_ivLength);
   }
 
-  // Шифрование файла
   Future<bool> encryptFile(
       String inputPath, String outputPath, String pin) async {
     try {
@@ -71,7 +67,6 @@ class EncryptionService {
     }
   }
 
-  // Расшифровка файла
   Future<bool> decryptFile(
       String inputPath, String outputPath, String pin) async {
     try {
@@ -100,7 +95,6 @@ class EncryptionService {
     }
   }
 
-  // Шифрование текста
   String encryptText(String text) {
     if (_cachedKey == null) {
       throw Exception('EncryptionService not initialized');
@@ -109,7 +103,7 @@ class EncryptionService {
       final iv = _generateIV();
       final encrypter =
           enc.Encrypter(enc.AES(_cachedKey!, mode: enc.AESMode.cbc));
-// ...
+
       final encrypted = encrypter.encrypt(text, iv: iv);
       final combined = Uint8List.fromList([...iv.bytes, ...encrypted.bytes]);
       return base64.encode(combined);
@@ -118,7 +112,6 @@ class EncryptionService {
     }
   }
 
-  // Расшифровка текста
   String decryptText(String encryptedText) {
     if (_cachedKey == null) {
       throw Exception('EncryptionService not initialized');
@@ -126,7 +119,7 @@ class EncryptionService {
     try {
       final combined = base64.decode(encryptedText);
       if (combined.length < _ivLength) throw Exception('Invalid data');
-// ...
+
       final iv = enc.IV(Uint8List.fromList(combined.take(_ivLength).toList()));
       final encryptedBytes = combined.skip(_ivLength).toList();
       final encrypter =
@@ -140,7 +133,6 @@ class EncryptionService {
     }
   }
 
-  // Проверка правильности PIN
   Future<bool> verifyPinForFile(String encryptedPath, String pin) async {
     try {
       final inputFile = File(encryptedPath);

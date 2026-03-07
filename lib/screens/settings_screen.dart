@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:local_auth/local_auth.dart';
 import '../services/prefs_service.dart';
 import '../services/db_service.dart';
 import '../services/sync_status_service.dart';
@@ -28,7 +29,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _trashCount = 0;
   bool _isSyncEnabled = false;
   int _balance = 0;
-  bool _isLoading = true;
 
   @override
   void initState() {
@@ -38,17 +38,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _initState() async {
-    await _checkAuth();
-    await _loadPinState();
-    await _loadTrashCount();
-    await _loadSyncState();
-    await _loadBalance();
-    if (mounted) setState(() => _isLoading = false);
-  }
-
-  Future<void> _checkAuth() async {
-    final valid = await AuthService.instance.refreshSession();
-    if (!valid && mounted) setState(() {});
+    _loadPinState();
+    _loadTrashCount();
+    _loadSyncState();
+    _loadBalance();
   }
 
   Future<void> _loadBalance() async {
@@ -155,28 +148,89 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _togglePin(bool value) async {
-    if (value) {
-      if (!mounted) return;
-      final pin = await showDialog<String>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const PinInputDialog(
-          title: 'Create PIN (4-8 digits)',
-          isConfirmation: true,
-        ),
-      );
-      if (pin != null && pin.length >= 4) {
-        await pinService.setPin(pin);
-        if (mounted) setState(() => _isPinEnabled = true);
+    if (!mounted) return;
+
+    // Сначала пробуем биометрию
+    bool biometricPassed = false;
+    try {
+      final localAuth = LocalAuthentication();
+      final available = await localAuth.canCheckBiometrics;
+      if (available) {
+        biometricPassed = await localAuth.authenticate(
+          localizedReason: value ? 'Enable note lock' : 'Disable note lock',
+          options: const AuthenticationOptions(
+            stickyAuth: false,
+            biometricOnly: true,
+          ),
+        );
       }
+    } catch (_) {}
+
+    if (value) {
+      final alreadyHasPin = await pinService.hasPin();
+      if (!biometricPassed) {
+        if (alreadyHasPin) {
+          // Верифицировать существующий PIN
+          if (!mounted) return;
+          final pin = await showDialog<String>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const PinInputDialog(
+              title: 'Enter PIN',
+              isConfirmation: false,
+            ),
+          );
+          if (pin == null || !await pinService.verifyPin(pin)) return;
+        } else {
+          // Создать новый PIN
+          if (!mounted) return;
+          final pin = await showDialog<String>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const PinInputDialog(
+              title: 'Create PIN (4-8 digits)',
+              isConfirmation: true,
+            ),
+          );
+          if (pin == null || pin.length < 4) return;
+          await pinService.setPin(pin);
+        }
+      } else if (!alreadyHasPin) {
+        // Биометрия прошла но PIN ещё не создан — создать как fallback
+        if (!mounted) return;
+        final pin = await showDialog<String>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const PinInputDialog(
+            title: 'Create backup PIN (4-8 digits)',
+            isConfirmation: true,
+          ),
+        );
+        if (pin == null || pin.length < 4) return;
+        await pinService.setPin(pin);
+      }
+      if (mounted) setState(() => _isPinEnabled = true);
     } else {
-      await pinService.deletePin();
+      if (!biometricPassed) {
+        // Fallback — ввести PIN
+        if (!mounted) return;
+        final pin = await showDialog<String>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const PinInputDialog(
+            title: 'Enter PIN to disable',
+            isConfirmation: false,
+          ),
+        );
+        if (pin == null || !await pinService.verifyPin(pin)) return;
+      }
       final notes = await DBService.db.getAllNotes();
       for (final note in notes) {
         if (note.isLocked == 1) {
           await DBService.db.updateNote(note.copyWith(isLocked: 0));
         }
       }
+      await pinService.deletePin();
       if (mounted) setState(() => _isPinEnabled = false);
     }
   }
@@ -226,161 +280,152 @@ class _SettingsScreenState extends State<SettingsScreen> {
           splashRadius: 28,
         ),
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: DokkiColors.primaryTeal))
-          : SafeArea(
-              child: ListView(
-                padding: const EdgeInsets.all(24),
-                children: [
-                  ListTile(
-                    leading: Icon(
-                      Icons.account_circle,
-                      color:
-                          isAuth ? const Color(0xFF00BCD4) : Colors.grey[600],
-                      size: 32,
-                    ),
-                    trailing: Icon(
-                      Icons.person_add,
-                      color:
-                          isAuth ? const Color(0xFF00BCD4) : Colors.grey[600],
-                      size: 24,
-                    ),
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const AuthScreen()),
-                      );
-                      if (mounted) {
-                        setState(() {});
-                        await _loadBalance();
-                      }
-                    },
-                  ),
-                  ListTile(
-                    leading: const AiMicIcon(
-                      size: 32,
-                      color: Color(0xFFFFD700),
-                    ),
-                    trailing: Text(
-                      '$_balance',
-                      style: TextStyle(
-                        color: Theme.of(context).textTheme.bodyLarge?.color,
-                        fontSize: 18,
-                      ),
-                    ),
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const PaywallScreen()),
-                      );
-                      if (mounted) {
-                        setState(() {});
-                        await _loadBalance();
-                      }
-                    },
-                  ),
-                  const Divider(color: Colors.grey, height: 32),
-                  _MinimalIconRow(
-                    left: const Icon(CupertinoIcons.moon_fill, size: 32),
-                    right: CupertinoSwitch(
-                      value: _isDarkMode,
-                      onChanged: _toggleTheme,
-                      activeTrackColor: teal,
-                      inactiveTrackColor: grey.withValues(alpha: 0.22),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  _MinimalIconRow(
-                    left: const Icon(CupertinoIcons.lock_shield, size: 32),
-                    right: CupertinoSwitch(
-                      value: _isPinEnabled,
-                      onChanged: _togglePin,
-                      activeTrackColor: teal,
-                      inactiveTrackColor: grey.withValues(alpha: 0.22),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  _MinimalIconRow(
-                    left: SvgPicture.asset(
-                      'assets/icons/sort_general.svg',
-                      width: 32,
-                      height: 32,
-                      colorFilter: ColorFilter.mode(
-                          Colors.grey.withValues(alpha: 0.65), BlendMode.srcIn),
-                    ),
-                    right: GestureDetector(
-                      onTap: () => setState(() => prefs.sortType =
-                          prefs.sortType == 'desc' ? 'az' : 'desc'),
-                      child: SvgPicture.asset(
-                        prefs.sortType == 'desc'
-                            ? 'assets/icons/calendar.svg'
-                            : 'assets/icons/sort_az.svg',
-                        width: 32,
-                        height: 32,
-                        colorFilter: const ColorFilter.mode(
-                            DokkiColors.primaryTeal, BlendMode.srcIn),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  _MinimalIconRow(
-                    left: const Icon(CupertinoIcons.cloud, size: 32),
-                    right: StreamBuilder<SyncStatus>(
-                      stream: syncStatusService.statusStream,
-                      initialData: _isSyncEnabled
-                          ? SyncStatus.synced
-                          : SyncStatus.disabled,
-                      builder: (context, snapshot) {
-                        final status = snapshot.data ?? SyncStatus.disabled;
-                        return Row(
-                          children: [
-                            Icon(_getSyncIcon(status),
-                                color: _getSyncColor(status), size: 32),
-                            const SizedBox(width: 12),
-                            CupertinoSwitch(
-                              value: _isSyncEnabled,
-                              onChanged: _toggleSync,
-                              activeTrackColor: DokkiColors.primaryTeal,
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  GestureDetector(
-                    onTap: () async {
-                      await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const TrashScreen()));
-                      _loadTrashCount();
-                    },
-                    child: _MinimalIconRow(
-                      left: const Icon(CupertinoIcons.trash,
-                          size: 32, color: Colors.redAccent),
-                      right: Padding(
-                        padding: const EdgeInsets.only(right: 2),
-                        child: Text(
-                          '$_trashCount',
-                          style: TextStyle(
-                            color: _trashCount > 0
-                                ? Colors.redAccent
-                                : Colors.grey,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            ListTile(
+              leading: Icon(
+                Icons.account_circle,
+                color: isAuth ? const Color(0xFF00BCD4) : Colors.grey[600],
+                size: 32,
+              ),
+              trailing: Icon(
+                Icons.person_add,
+                color: isAuth ? const Color(0xFF00BCD4) : Colors.grey[600],
+                size: 24,
+              ),
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AuthScreen()),
+                );
+                if (mounted) {
+                  setState(() {});
+                  await _loadBalance();
+                }
+              },
+            ),
+            ListTile(
+              leading: const AiMicIcon(
+                size: 32,
+                color: Color(0xFFFFD700),
+              ),
+              trailing: Text(
+                '$_balance',
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                  fontSize: 18,
+                ),
+              ),
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const PaywallScreen()),
+                );
+                if (mounted) {
+                  setState(() {});
+                  await _loadBalance();
+                }
+              },
+            ),
+            const Divider(color: Colors.grey, height: 32),
+            _MinimalIconRow(
+              left: const Icon(CupertinoIcons.moon_fill, size: 32),
+              right: CupertinoSwitch(
+                value: _isDarkMode,
+                onChanged: _toggleTheme,
+                activeTrackColor: teal,
+                inactiveTrackColor: grey.withValues(alpha: 0.22),
               ),
             ),
+            const SizedBox(height: 32),
+            _MinimalIconRow(
+              left: const Icon(CupertinoIcons.lock_shield, size: 32),
+              right: CupertinoSwitch(
+                value: _isPinEnabled,
+                onChanged: _togglePin,
+                activeTrackColor: teal,
+                inactiveTrackColor: grey.withValues(alpha: 0.22),
+              ),
+            ),
+            const SizedBox(height: 32),
+            _MinimalIconRow(
+              left: SvgPicture.asset(
+                'assets/icons/sort_general.svg',
+                width: 32,
+                height: 32,
+                colorFilter: ColorFilter.mode(
+                    Colors.grey.withValues(alpha: 0.65), BlendMode.srcIn),
+              ),
+              right: GestureDetector(
+                onTap: () => setState(() =>
+                    prefs.sortType = prefs.sortType == 'desc' ? 'az' : 'desc'),
+                child: SvgPicture.asset(
+                  prefs.sortType == 'desc'
+                      ? 'assets/icons/calendar.svg'
+                      : 'assets/icons/sort_az.svg',
+                  width: 32,
+                  height: 32,
+                  colorFilter: const ColorFilter.mode(
+                      DokkiColors.primaryTeal, BlendMode.srcIn),
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+            _MinimalIconRow(
+              left: const Icon(CupertinoIcons.cloud, size: 32),
+              right: StreamBuilder<SyncStatus>(
+                stream: syncStatusService.statusStream,
+                initialData:
+                    _isSyncEnabled ? SyncStatus.synced : SyncStatus.disabled,
+                builder: (context, snapshot) {
+                  final status = snapshot.data ?? SyncStatus.disabled;
+                  return Row(
+                    children: [
+                      Icon(_getSyncIcon(status),
+                          color: _getSyncColor(status), size: 32),
+                      const SizedBox(width: 12),
+                      CupertinoSwitch(
+                        value: _isSyncEnabled,
+                        onChanged: _toggleSync,
+                        activeTrackColor: DokkiColors.primaryTeal,
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 32),
+            GestureDetector(
+              onTap: () async {
+                await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const TrashScreen()));
+                _loadTrashCount();
+              },
+              child: _MinimalIconRow(
+                left: const Icon(CupertinoIcons.trash,
+                    size: 32, color: Colors.redAccent),
+                right: Padding(
+                  padding: const EdgeInsets.only(right: 2),
+                  child: Text(
+                    '$_trashCount',
+                    style: TextStyle(
+                      color: _trashCount > 0 ? Colors.redAccent : Colors.grey,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
     );
   }
 }

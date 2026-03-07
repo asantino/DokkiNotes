@@ -7,6 +7,7 @@ import 'screens/onboarding_screen.dart';
 import 'services/prefs_service.dart';
 import 'theme/dokki_theme.dart';
 import 'services/purchase_service.dart';
+import 'services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +30,8 @@ void main() async {
   debugPrint('✅ Preferences initialized');
   await PurchaseService.instance.initialize();
   debugPrint('✅ PurchaseService initialized');
+
+  await AuthService.instance.refreshSession();
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

@@ -179,6 +179,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
         if (pin == null || pin.length < 4) return;
         await pinService.setPin(pin);
+      } else {
+        // Биометрия прошла — сохраняем специальный маркер
+        await pinService.setPin('biometric_only');
       }
       if (mounted) setState(() => _isPinEnabled = true);
     } else {

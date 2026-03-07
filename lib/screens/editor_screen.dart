@@ -29,6 +29,7 @@ class NoteEditorScreen extends StatefulWidget {
 class _NoteEditorScreenState extends State<NoteEditorScreen> {
   late HashtagEditingController _titleController;
   late HashtagEditingController _contentController;
+  final _titleFocusNode = FocusNode();
   final _contentFocusNode = FocusNode();
 
   DateTime? _expiresAt;
@@ -127,6 +128,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     _stopListening();
     _titleController.dispose();
     _contentController.dispose();
+    _titleFocusNode.dispose();
     _contentFocusNode.dispose();
     super.dispose();
   }
@@ -429,12 +431,17 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: TextField(
                 controller: _titleController,
+                focusNode: _titleFocusNode,
                 textCapitalization: TextCapitalization.sentences,
+                textInputAction: TextInputAction.newline,
+                cursorColor: DokkiColors.primaryTeal,
                 style:
                     const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
                 decoration: InputDecoration(
-                    hintText: AppStrings.get('title_hint'),
-                    border: InputBorder.none),
+                  hintText: AppStrings.get('title_hint'),
+                  border: InputBorder.none,
+                ),
+                onSubmitted: (_) => _contentFocusNode.requestFocus(),
               ),
             ),
             Expanded(

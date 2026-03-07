@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-// ВОТ ОНА - ГЛОБАЛЬНАЯ ПЕРЕМЕННАЯ (ValueNotifier).
-// Она должна быть объявлена вне классов, чтобы её видели другие файлы.
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
 
 class DokkiTheme {
@@ -16,10 +14,14 @@ class DokkiTheme {
       elevation: 0,
     ),
     iconTheme: const IconThemeData(color: Colors.black),
-    // Настройка FloatingActionButton (плюсик)
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: DokkiColors.primaryTeal,
       foregroundColor: Colors.white,
+    ),
+    textSelectionTheme: const TextSelectionThemeData(
+      cursorColor: DokkiColors.primaryTeal,
+      selectionColor: Color(0x4400BFA5),
+      selectionHandleColor: DokkiColors.primaryTeal,
     ),
   );
 
@@ -38,10 +40,14 @@ class DokkiTheme {
       backgroundColor: DokkiColors.primaryTeal,
       foregroundColor: Colors.white,
     ),
+    textSelectionTheme: const TextSelectionThemeData(
+      cursorColor: DokkiColors.primaryTeal,
+      selectionColor: Color(0x4400BFA5),
+      selectionHandleColor: DokkiColors.primaryTeal,
+    ),
   );
 }
 
 class DokkiColors {
-  static const Color primaryTeal =
-      Color(0xFF00BFA5); // Твой фирменный бирюзовый
+  static const Color primaryTeal = Color(0xFF00BFA5);
 }

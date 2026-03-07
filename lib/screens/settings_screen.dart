@@ -167,42 +167,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (_) {}
 
     if (value) {
-      final alreadyHasPin = await pinService.hasPin();
       if (!biometricPassed) {
-        if (alreadyHasPin) {
-          // Верифицировать существующий PIN
-          if (!mounted) return;
-          final pin = await showDialog<String>(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => const PinInputDialog(
-              title: 'Enter PIN',
-              isConfirmation: false,
-            ),
-          );
-          if (pin == null || !await pinService.verifyPin(pin)) return;
-        } else {
-          // Создать новый PIN
-          if (!mounted) return;
-          final pin = await showDialog<String>(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => const PinInputDialog(
-              title: 'Create PIN (4-8 digits)',
-              isConfirmation: true,
-            ),
-          );
-          if (pin == null || pin.length < 4) return;
-          await pinService.setPin(pin);
-        }
-      } else if (!alreadyHasPin) {
-        // Биометрия прошла но PIN ещё не создан — создать как fallback
         if (!mounted) return;
         final pin = await showDialog<String>(
           context: context,
           barrierDismissible: false,
           builder: (context) => const PinInputDialog(
-            title: 'Create backup PIN (4-8 digits)',
+            title: 'Create PIN (4-8 digits)',
             isConfirmation: true,
           ),
         );

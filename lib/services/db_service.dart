@@ -5,7 +5,6 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/note.dart';
 import 'encryption_service.dart';
-import 'pin_service.dart';
 import 'auto_sync_service.dart';
 import 'google_drive_service.dart';
 
@@ -116,10 +115,9 @@ class DBService {
 
   Future<int> addNote(Note note) async {
     final db = await database;
-    final hasPin = await pinService.hasPin();
 
     int result;
-    if (hasPin && hasKey) {
+    if (hasKey) {
       final encryptedNote = Note(
         id: note.id,
         title: encryptionService.encryptText(note.title),
@@ -138,13 +136,13 @@ class DBService {
     }
 
     debugPrint('💾 Note saved (addNote), checking for sync...');
-    debugPrint('🔐 Has PIN: $hasPin');
+    debugPrint('🔐 Has Key: $hasKey');
 
-    if (hasPin) {
+    if (hasKey) {
       debugPrint('🔄 Triggering auto-sync...');
       autoSyncService.triggerSync();
     } else {
-      debugPrint('⏭️  No PIN, skipping sync');
+      debugPrint('⏭️  No Key, skipping sync');
     }
 
     _scheduleSync();
@@ -160,9 +158,8 @@ class DBService {
     );
 
     final notes = List.generate(maps.length, (i) => Note.fromMap(maps[i]));
-    final hasPin = await pinService.hasPin();
 
-    if (hasPin && hasKey) {
+    if (hasKey) {
       return notes.map((note) {
         try {
           return Note(
@@ -188,10 +185,9 @@ class DBService {
 
   Future<int> updateNote(Note note) async {
     final db = await database;
-    final hasPin = await pinService.hasPin();
 
     int result;
-    if (hasPin && hasKey) {
+    if (hasKey) {
       final encryptedNote = Note(
         id: note.id,
         title: encryptionService.encryptText(note.title),
@@ -220,13 +216,13 @@ class DBService {
     }
 
     debugPrint('💾 Note saved (updateNote), checking for sync...');
-    debugPrint('🔐 Has PIN: $hasPin');
+    debugPrint('🔐 Has Key: $hasKey');
 
-    if (hasPin) {
+    if (hasKey) {
       debugPrint('🔄 Triggering auto-sync...');
       autoSyncService.triggerSync();
     } else {
-      debugPrint('⏭️  No PIN, skipping sync');
+      debugPrint('⏭️  No Key, skipping sync');
     }
 
     _scheduleSync();
@@ -276,9 +272,8 @@ class DBService {
         where: 'is_trash = 1', orderBy: "created_at DESC");
 
     final notes = List.generate(maps.length, (i) => Note.fromMap(maps[i]));
-    final hasPin = await pinService.hasPin();
 
-    if (hasPin && hasKey) {
+    if (hasKey) {
       return notes.map((note) {
         try {
           return Note(

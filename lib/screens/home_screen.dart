@@ -11,6 +11,8 @@ import '../services/voice_service.dart';
 import '../services/ai_service.dart';
 import '../services/auth_service.dart';
 import '../services/railway_service.dart';
+import '../services/pin_service.dart';
+import '../widgets/pin_input_dialog.dart';
 import '../theme/dokki_theme.dart';
 import '../widgets/ai_mic_icon.dart';
 import './settings_screen.dart';
@@ -29,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isLoading = false;
   String? _selectedTag;
   List<String> _availableTags = [];
+  bool _isAuthenticating = false;
 
   Timer? _destructionTimer;
   final LocalAuthentication auth = LocalAuthentication();
@@ -39,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    AuthService.instance.refreshSession();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initApp();
     });
@@ -148,17 +152,42 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<bool> _authenticate() async {
+    if (_isAuthenticating) return false;
+    _isAuthenticating = true;
     try {
-      return await auth.authenticate(
-        localizedReason: ' ',
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: false,
+      final hasDokkiPin = await pinService.hasPin();
+      if (!hasDokkiPin) return false;
+
+      try {
+        final biometricAvailable = await auth.canCheckBiometrics;
+        if (biometricAvailable) {
+          final granted = await auth.authenticate(
+            localizedReason: 'Access locked note',
+            options: const AuthenticationOptions(
+              stickyAuth: false,
+              biometricOnly: true,
+            ),
+          );
+          if (granted) {
+            await Future.delayed(const Duration(milliseconds: 300));
+            return true;
+          }
+        }
+      } catch (_) {}
+
+      if (!mounted) return false;
+      final pin = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const PinInputDialog(
+          title: 'Enter PIN',
+          isConfirmation: false,
         ),
       );
-    } catch (e) {
-      debugPrint('Auth error: $e');
-      return false;
+      if (pin == null) return false;
+      return pinService.verifyPin(pin);
+    } finally {
+      _isAuthenticating = false;
     }
   }
 
@@ -243,10 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
           'model': 'gpt-4o-mini',
           'message_length': userMessage.length,
         });
-        debugPrint('✅ 1 token deducted');
-      } catch (e) {
-        debugPrint('❌ Deduction error: $e');
-      }
+      } catch (_) {}
 
       String generatedTitle = userMessage;
       if (generatedTitle.isNotEmpty) {

@@ -8,6 +8,7 @@ import '../services/voice_service.dart';
 import '../services/ai_service.dart';
 import '../services/auth_service.dart';
 import '../services/railway_service.dart';
+import '../services/pin_service.dart';
 import '../resources/app_strings.dart';
 import '../theme/dokki_theme.dart';
 
@@ -68,7 +69,10 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     _loadExistingTags();
   }
 
-  void _toggleLock() {
+  Future<void> _toggleLock() async {
+    final hasDokkiPin = await pinService.hasPin();
+    if (!hasDokkiPin && !_isLocked) return;
+
     setState(() {
       _isLocked = !_isLocked;
       _isDirty = true;
@@ -285,10 +289,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
           'model': 'gpt-4o-mini',
           'message_length': userMessage.length,
         });
-        debugPrint('✅ 1 token deducted');
-      } catch (e) {
-        debugPrint('❌ Deduction error: $e');
-      }
+      } catch (_) {}
 
       final separator = currentContent.trim().isEmpty ? "" : "\n\n";
       final newContent =

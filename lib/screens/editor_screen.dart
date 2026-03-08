@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:local_auth/local_auth.dart';
 import '../models/note.dart';
 import '../services/db_service.dart';
 import '../services/voice_service.dart';
@@ -9,6 +10,7 @@ import '../services/ai_service.dart';
 import '../services/auth_service.dart';
 import '../services/railway_service.dart';
 import '../services/pin_service.dart';
+import '../widgets/pin_input_dialog.dart';
 import '../resources/app_strings.dart';
 import '../theme/dokki_theme.dart';
 
@@ -70,14 +72,54 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     _loadExistingTags();
   }
 
+  // ОБНОВЛЕННЫЙ МЕТОД: Блокировка заметки с биометрией и PIN
   Future<void> _toggleLock() async {
-    final hasDokkiPin = await pinService.hasPin();
-    if (!hasDokkiPin && !_isLocked) return;
+    // 1. Проверяем или создаем PIN (если его нет)
+    final pinExists = await PinService.ensurePinExists(context);
+    if (!pinExists) return;
 
-    setState(() {
-      _isLocked = !_isLocked;
-      _isDirty = true;
-    });
+    bool authenticated = false;
+    final localAuth = LocalAuthentication();
+
+    try {
+      // 2. Пробуем биометрию
+      final canCheck = await localAuth.canCheckBiometrics;
+      final isSupported = await localAuth.isDeviceSupported();
+
+      if (canCheck && isSupported) {
+        authenticated = await localAuth.authenticate(
+          localizedReason: 'Confirm to change note lock status',
+          options: const AuthenticationOptions(
+            stickyAuth: false,
+            biometricOnly: true,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Biometric error: $e');
+    }
+
+    // 3. Fallback на PIN, если биометрия не прошла/недоступна
+    if (!authenticated) {
+      if (!mounted) return;
+      final pin = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const PinInputDialog(isConfirmation: false),
+      );
+
+      if (pin != null) {
+        authenticated = await pinService.verifyPin(pin);
+      }
+    }
+
+    // 4. Применяем изменения при успехе
+    if (authenticated && mounted) {
+      setState(() {
+        _isLocked = !_isLocked;
+        _isDirty = true;
+      });
+    }
   }
 
   Future<void> _loadExistingTags() async {

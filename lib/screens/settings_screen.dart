@@ -10,6 +10,7 @@ import '../services/railway_service.dart';
 import '../services/google_drive_service.dart';
 import '../services/pin_service.dart';
 import '../widgets/pin_input_dialog.dart';
+import '../widgets/change_pin_sheet.dart';
 import '../theme/dokki_theme.dart';
 import '../widgets/ai_mic_icon.dart';
 import 'trash_screen.dart';
@@ -63,7 +64,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadPinState() async {
     final hasPin = await pinService.hasPin();
-    if (mounted) setState(() => _isPinEnabled = hasPin);
+    if (mounted) {
+      setState(() {
+        _isPinEnabled = hasPin;
+      });
+    }
   }
 
   Future<void> _loadSyncState() async {
@@ -121,14 +126,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           IconButton(
             onPressed: () => Navigator.pop(context, false),
-            icon: Icon(CupertinoIcons.xmark_circle,
-                color: Colors.grey.withValues(alpha: 0.7), size: 48),
+            icon: Icon(
+              CupertinoIcons.xmark_circle,
+              color: Colors.grey.withValues(alpha: 0.7),
+              size: 48,
+            ),
           ),
           const SizedBox(width: 48),
           IconButton(
             onPressed: () => Navigator.pop(context, true),
-            icon: const Icon(CupertinoIcons.checkmark_circle_fill,
-                color: Colors.red, size: 48),
+            icon: const Icon(
+              CupertinoIcons.checkmark_circle_fill,
+              color: Colors.red,
+              size: 48,
+            ),
           ),
         ],
       ),
@@ -148,64 +159,102 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _togglePin(bool value) async {
-    if (!mounted) return;
-
-    // Сначала пробуем биометрию
-    bool biometricPassed = false;
-    try {
-      final localAuth = LocalAuthentication();
-      final available = await localAuth.canCheckBiometrics;
-      if (available) {
-        biometricPassed = await localAuth.authenticate(
-          localizedReason: value ? 'Enable note lock' : 'Disable note lock',
-          options: const AuthenticationOptions(
-            stickyAuth: false,
-            biometricOnly: true,
-          ),
-        );
-      }
-    } catch (_) {}
-
     if (value) {
-      if (!biometricPassed) {
+      final hasPin = await pinService.hasPin();
+
+      if (!hasPin) {
         if (!mounted) return;
         final pin = await showDialog<String>(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const PinInputDialog(
-            title: 'Create PIN (4-8 digits)',
-            isConfirmation: true,
-          ),
+          builder: (context) => const PinInputDialog(isConfirmation: true),
         );
+
         if (pin == null || pin.length < 4) return;
         await pinService.setPin(pin);
-      } else {
-        // Биометрия прошла — сохраняем специальный маркер
-        await pinService.setPin('biometric_only');
+
+        if (!mounted) return;
+        setState(() => _isPinEnabled = true);
+        return;
       }
-      if (mounted) setState(() => _isPinEnabled = true);
+
+      bool authenticated = false;
+      final localAuth = LocalAuthentication();
+      try {
+        final canCheck = await localAuth.canCheckBiometrics;
+        if (canCheck) {
+          authenticated = await localAuth.authenticate(
+            localizedReason: 'Confirm to enable PIN',
+            options: const AuthenticationOptions(
+              stickyAuth: false,
+              biometricOnly: true,
+            ),
+          );
+        }
+      } catch (_) {}
+
+      if (!authenticated) {
+        if (!mounted) return;
+        final verifyPin = await showDialog<String>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const PinInputDialog(isConfirmation: false),
+        );
+
+        if (verifyPin == null) return;
+        authenticated = await pinService.verifyPin(verifyPin);
+      }
+
+      if (authenticated && mounted) {
+        setState(() => _isPinEnabled = true);
+      }
     } else {
+      bool biometricPassed = false;
+      final localAuth = LocalAuthentication();
+      try {
+        final available = await localAuth.canCheckBiometrics;
+        if (available) {
+          biometricPassed = await localAuth.authenticate(
+            localizedReason: 'Disable note lock',
+            options: const AuthenticationOptions(
+              stickyAuth: false,
+              biometricOnly: true,
+            ),
+          );
+        }
+      } catch (_) {}
+
       if (!biometricPassed) {
-        // Fallback — ввести PIN
         if (!mounted) return;
         final pin = await showDialog<String>(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const PinInputDialog(
-            title: 'Enter PIN to disable',
-            isConfirmation: false,
-          ),
+          builder: (context) => const PinInputDialog(isConfirmation: false),
         );
         if (pin == null || !await pinService.verifyPin(pin)) return;
       }
+
       final notes = await DBService.db.getAllNotes();
       for (final note in notes) {
         if (note.isLocked == 1) {
           await DBService.db.updateNote(note.copyWith(isLocked: 0));
         }
       }
-      await pinService.deletePin();
       if (mounted) setState(() => _isPinEnabled = false);
+    }
+  }
+
+  Future<void> _openChangePinSheet() async {
+    final hasExistingPin = await pinService.hasPin();
+    if (!mounted) return;
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => ChangePinSheet(hasExistingPin: hasExistingPin),
+    );
+
+    if (result == true) {
+      await _loadPinState();
     }
   }
 
@@ -281,10 +330,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
             ListTile(
-              leading: const AiMicIcon(
-                size: 32,
-                color: Color(0xFFFFD700),
-              ),
+              leading: const AiMicIcon(size: 32, color: Color(0xFFFFD700)),
               trailing: Text(
                 '$_balance',
                 style: TextStyle(
@@ -317,11 +363,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 32),
             _MinimalIconRow(
               left: const Icon(CupertinoIcons.lock_shield, size: 32),
-              right: CupertinoSwitch(
-                value: _isPinEnabled,
-                onChanged: _togglePin,
-                activeTrackColor: teal,
-                inactiveTrackColor: grey.withValues(alpha: 0.22),
+              right: Row(
+                children: [
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _openChangePinSheet,
+                    child: Container(
+                      width: 40,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: teal, width: 2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'PIN',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: teal,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  CupertinoSwitch(
+                    value: _isPinEnabled,
+                    onChanged: _togglePin,
+                    activeTrackColor: teal,
+                    inactiveTrackColor: grey.withValues(alpha: 0.22),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 32),
@@ -330,8 +403,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 'assets/icons/sort_general.svg',
                 width: 32,
                 height: 32,
-                colorFilter: ColorFilter.mode(
-                    Colors.grey.withValues(alpha: 0.65), BlendMode.srcIn),
+                colorFilter: ColorFilter.mode(grey, BlendMode.srcIn),
               ),
               right: GestureDetector(
                 onTap: () => setState(() =>
@@ -342,8 +414,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       : 'assets/icons/sort_az.svg',
                   width: 32,
                   height: 32,
-                  colorFilter: const ColorFilter.mode(
-                      DokkiColors.primaryTeal, BlendMode.srcIn),
+                  colorFilter: const ColorFilter.mode(teal, BlendMode.srcIn),
                 ),
               ),
             ),
@@ -364,7 +435,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       CupertinoSwitch(
                         value: _isSyncEnabled,
                         onChanged: _toggleSync,
-                        activeTrackColor: DokkiColors.primaryTeal,
+                        activeTrackColor: teal,
                       ),
                     ],
                   );

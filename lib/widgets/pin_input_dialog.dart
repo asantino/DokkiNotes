@@ -4,12 +4,10 @@ import 'package:flutter/services.dart';
 import '../theme/dokki_theme.dart';
 
 class PinInputDialog extends StatefulWidget {
-  final String title;
   final bool isConfirmation;
 
   const PinInputDialog({
     super.key,
-    required this.title,
     this.isConfirmation = true,
   });
 

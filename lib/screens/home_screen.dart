@@ -180,7 +180,6 @@ class _HomeScreenState extends State<HomeScreen> {
         context: context,
         barrierDismissible: false,
         builder: (context) => const PinInputDialog(
-          title: 'Enter PIN',
           isConfirmation: false,
         ),
       );

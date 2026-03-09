@@ -11,6 +11,11 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
+  final _passwordFocusNode = FocusNode();
+  final _confirmPasswordFocusNode = FocusNode();
+
   bool _isLogin = true;
   bool _isLoading = false;
   String? _error;
@@ -19,6 +24,9 @@ class _AuthScreenState extends State<AuthScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _passwordFocusNode.dispose();
+    _confirmPasswordFocusNode.dispose();
     super.dispose();
   }
 
@@ -35,6 +43,13 @@ class _AuthScreenState extends State<AuthScreen> {
           _passwordController.text,
         );
       } else {
+        if (_passwordController.text != _confirmPasswordController.text) {
+          setState(() {
+            _error = 'error';
+          });
+          return;
+        }
+
         await AuthService.instance.signUp(
           _emailController.text.trim(),
           _passwordController.text,
@@ -127,6 +142,8 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
             ),
             const SizedBox(height: 60),
+
+            // Email Field
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
@@ -136,6 +153,8 @@ class _AuthScreenState extends State<AuthScreen> {
                   Expanded(
                     child: TextField(
                       controller: _emailController,
+                      textInputAction: TextInputAction.next,
+                      onSubmitted: (_) => _passwordFocusNode.requestFocus(),
                       style: const TextStyle(color: Colors.white, fontSize: 16),
                       decoration: InputDecoration(
                         enabledBorder: UnderlineInputBorder(
@@ -152,6 +171,8 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
             ),
             const SizedBox(height: 24),
+
+            // Password Field
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
@@ -161,7 +182,18 @@ class _AuthScreenState extends State<AuthScreen> {
                   Expanded(
                     child: TextField(
                       controller: _passwordController,
+                      focusNode: _passwordFocusNode,
                       obscureText: true,
+                      textInputAction: _isLogin
+                          ? TextInputAction.done
+                          : TextInputAction.next,
+                      onSubmitted: (_) {
+                        if (_isLogin) {
+                          _handleAuth();
+                        } else {
+                          _confirmPasswordFocusNode.requestFocus();
+                        }
+                      },
                       style: const TextStyle(color: Colors.white, fontSize: 16),
                       decoration: InputDecoration(
                         enabledBorder: UnderlineInputBorder(
@@ -176,6 +208,41 @@ class _AuthScreenState extends State<AuthScreen> {
                 ],
               ),
             ),
+
+            // Confirm Password Field (Only for Signup)
+            if (!_isLogin) ...[
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  children: [
+                    const Icon(Icons.lock_reset,
+                        color: Color(0xFF00BCD4), size: 24),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextField(
+                        controller: _confirmPasswordController,
+                        focusNode: _confirmPasswordFocusNode,
+                        obscureText: true,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _handleAuth(),
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 16),
+                        decoration: InputDecoration(
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: Colors.grey[700]!),
+                          ),
+                          focusedBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: Color(0xFF00BCD4)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             const SizedBox(height: 60),
             Center(
               child: FloatingActionButton(
@@ -201,6 +268,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         _isLogin ? const Color(0xFF00BCD4) : Colors.grey[600],
                     onPressed: () => setState(() {
                       _isLogin = true;
+                      _error = null; // Очищаем ошибку при переключении
                     }),
                   ),
                   const SizedBox(width: 40),
@@ -210,6 +278,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         !_isLogin ? const Color(0xFF00BCD4) : Colors.grey[600],
                     onPressed: () => setState(() {
                       _isLogin = false;
+                      _error = null; // Очищаем ошибку при переключении
                     }),
                   ),
                 ],

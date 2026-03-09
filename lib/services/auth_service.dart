@@ -72,4 +72,17 @@ class AuthService {
     encryptionService.clearKey();
     await _supabase.auth.signOut();
   }
+
+  Future<void> changePassword(String newPassword) async {
+    try {
+      await _supabase.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+      await _secureStorage.write(key: _passwordKey, value: newPassword);
+      encryptionService.init(newPassword);
+      DBService.db.setEncryptionKey(newPassword);
+    } catch (e) {
+      throw Exception('Password change error: ${e.toString()}');
+    }
+  }
 }

@@ -191,10 +191,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _createAiNote() async {
-    if (!AuthService.instance.isAuthenticated) return;
+    if (!AuthService.instance.isAuthenticated) {
+      _showWarningDialog(Icons.person_off);
+      return;
+    }
 
     final balance = await RailwayService.instance.checkBalance();
-    if (balance < 1) return;
+    if (balance < 1) {
+      _showWarningDialog(Icons.money_off);
+      return;
+    }
 
     StateSetter? dialogSetState;
     String dialogText = "Initializing...";
@@ -515,6 +521,36 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildBottomBar(),
               ],
             ),
+    );
+  }
+
+  void _showWarningDialog(IconData icon) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(20))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.person_off, size: 56, color: Colors.redAccent),
+                SizedBox(width: 32),
+                Icon(Icons.money_off, size: 56, color: Colors.redAccent),
+              ],
+            ),
+            const SizedBox(height: 24),
+            IconButton(
+              iconSize: 48,
+              icon: const Icon(Icons.check_circle, color: Color(0xFF00BCD4)),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

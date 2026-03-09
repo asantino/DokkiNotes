@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/prefs_service.dart';
 import '../services/db_service.dart';
 import '../services/sync_status_service.dart';
@@ -292,6 +293,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _launchAboutUrl() async {
+    final Uri url = Uri.parse('https://www.dokki.org/guides/dokkinotes');
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      // Silently fail in production
+      debugPrint('Could not launch $url');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const Color teal = DokkiColors.primaryTeal;
@@ -469,6 +478,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       fontSize: 20,
                     ),
                   ),
+                ),
+              ),
+            ),
+            const Divider(color: Colors.grey, height: 48),
+            GestureDetector(
+              onTap: _launchAboutUrl,
+              child: _MinimalIconRow(
+                left: Icon(
+                  CupertinoIcons.info_circle,
+                  size: 32,
+                  color: grey,
+                ),
+                right: Icon(
+                  CupertinoIcons.arrow_up_right_square,
+                  size: 28,
+                  color: grey,
                 ),
               ),
             ),

@@ -114,12 +114,100 @@ class _AuthScreenState extends State<AuthScreen> {
                     icon:
                         const Icon(Icons.lock_reset, color: Color(0xFF00BCD4)),
                     onPressed: () async {
-                      await showModalBottomSheet(
+                      final confirmed = await showDialog<bool>(
                         context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.grey[900],
-                        builder: (context) => const ChangePasswordSheet(),
+                        builder: (context) => AlertDialog(
+                          backgroundColor: Colors.grey[900],
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20)),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Строка 1: ключ → замок + заметка
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.key,
+                                      size: 28, color: Colors.grey[400]),
+                                  const SizedBox(width: 8),
+                                  Icon(Icons.arrow_forward,
+                                      size: 20, color: Colors.grey[600]),
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.lock,
+                                      size: 26, color: Color(0xFF00BCD4)),
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.sticky_note_2,
+                                      size: 26, color: Color(0xFF00BCD4)),
+                                ],
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Warning
+                              const Icon(Icons.warning,
+                                  size: 60, color: Colors.redAccent),
+                              const SizedBox(height: 24),
+
+                              // Строка 2: ключ с обновлением → заметка + запрет
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.key,
+                                          size: 28, color: Colors.grey[400]),
+                                      const SizedBox(width: 4),
+                                      const Icon(Icons.lock_reset,
+                                          size: 20, color: Color(0xFF00BCD4)),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Icon(Icons.arrow_forward,
+                                      size: 20, color: Colors.grey[600]),
+                                  const SizedBox(width: 8),
+                                  Icon(Icons.sticky_note_2,
+                                      size: 28, color: Colors.grey[500]),
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.block,
+                                      size: 32, color: Colors.redAccent),
+                                ],
+                              ),
+                              const SizedBox(height: 32),
+
+                              // Кнопки
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  IconButton(
+                                    iconSize: 48,
+                                    icon: Icon(Icons.cancel,
+                                        color: Colors.grey[600]),
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                  ),
+                                  const SizedBox(width: 40),
+                                  IconButton(
+                                    iconSize: 48,
+                                    icon: const Icon(Icons.check_circle,
+                                        color: Color(0xFF00BCD4)),
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       );
+
+                      if (confirmed == true && context.mounted) {
+                        await showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.grey[900],
+                          builder: (context) => const ChangePasswordSheet(),
+                        );
+                      }
                     },
                   ),
                   const SizedBox(width: 40),

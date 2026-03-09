@@ -8,9 +8,12 @@ class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
   // Assets defined here
-  static const String _assetPage1 = 'assets/images/onboarding_ai_voice.png';
-  static const String _assetPage2 = 'assets/images/onboarding_auto_delete.png';
-  static const String _assetPage3 = 'assets/images/onboarding_sync.png';
+  static const String _assetPage1 =
+      'assets/onboarding/onboarding_1_ai_voice.png';
+  static const String _assetPage2 =
+      'assets/onboarding/onboarding_2_autodelete.png';
+  static const String _assetPage3 =
+      'assets/onboarding/onboarding_3_encryption.png';
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -20,23 +23,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  // Updated onboarding page data using assets and new metaphor
+  // Updated onboarding page data - images already contain all text
   final List<OnboardingData> _pages = [
     OnboardingData(
       assetPath: OnboardingScreen._assetPage1,
-      title: 'DokkiNotes',
-      description:
-          'AI-Powered Voice Notes. Speak, transcribe, smartly categorize.',
+      title: '',
+      description: '',
     ),
     OnboardingData(
       assetPath: OnboardingScreen._assetPage2,
-      title: 'Auto-delete',
-      description: 'Notes delete themselves after 1 or 24 hours',
+      title: '',
+      description: '',
     ),
     OnboardingData(
       assetPath: OnboardingScreen._assetPage3,
-      title: 'Sync',
-      description: 'Encrypted cloud for free',
+      title: '',
+      description: '',
     ),
   ];
 
@@ -214,17 +216,12 @@ class OnboardingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Image.asset(
-            data.assetPath,
-            height: MediaQuery.of(context).size.height * 0.6,
-            fit: BoxFit.contain,
-          ),
-        ],
+    return Center(
+      child: Image.asset(
+        data.assetPath,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.contain,
       ),
     );
   }

@@ -65,6 +65,4 @@ flutter:
     - assets/logo.png
     - assets/app_icon.png
     - assets/icons/
-    - assets/images/onboarding_ai_voice.png
-    - assets/images/onboarding_auto_delete.png
-    - assets/images/onboarding_sync.png
+    - assets/onboarding/

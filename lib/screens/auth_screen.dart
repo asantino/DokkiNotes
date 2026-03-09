@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../widgets/change_password_sheet.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -105,14 +106,33 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
               const SizedBox(height: 60),
-              IconButton(
-                iconSize: 48,
-                icon: const Icon(Icons.logout, color: Colors.redAccent),
-                onPressed: () async {
-                  await AuthService.instance.signOut();
-                  if (!context.mounted) return;
-                  Navigator.pop(context, true);
-                },
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    iconSize: 48,
+                    icon:
+                        const Icon(Icons.lock_reset, color: Color(0xFF00BCD4)),
+                    onPressed: () async {
+                      await showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.grey[900],
+                        builder: (context) => const ChangePasswordSheet(),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 40),
+                  IconButton(
+                    iconSize: 48,
+                    icon: const Icon(Icons.logout, color: Colors.redAccent),
+                    onPressed: () async {
+                      await AuthService.instance.signOut();
+                      if (!context.mounted) return;
+                      Navigator.pop(context, true);
+                    },
+                  ),
+                ],
               ),
             ],
           ),
@@ -268,7 +288,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         _isLogin ? const Color(0xFF00BCD4) : Colors.grey[600],
                     onPressed: () => setState(() {
                       _isLogin = true;
-                      _error = null; // Очищаем ошибку при переключении
+                      _error = null;
                     }),
                   ),
                   const SizedBox(width: 40),
@@ -278,7 +298,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         !_isLogin ? const Color(0xFF00BCD4) : Colors.grey[600],
                     onPressed: () => setState(() {
                       _isLogin = false;
-                      _error = null; // Очищаем ошибку при переключении
+                      _error = null;
                     }),
                   ),
                 ],

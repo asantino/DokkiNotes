@@ -195,14 +195,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       if (!authenticated) {
         if (!mounted) return;
-        final verifyPin = await showDialog<String>(
+        final pin = await showDialog<String>(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const PinInputDialog(isConfirmation: false),
+          builder: (context) => PinInputDialog(
+            isConfirmation: false,
+            verifyPin: (input) async => await pinService.verifyPin(input),
+          ),
         );
 
-        if (verifyPin == null) return;
-        authenticated = await pinService.verifyPin(verifyPin);
+        authenticated = pin != null;
       }
 
       if (authenticated && mounted) {
@@ -229,9 +231,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final pin = await showDialog<String>(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const PinInputDialog(isConfirmation: false),
+          builder: (context) => PinInputDialog(
+            isConfirmation: false,
+            verifyPin: (input) async => await pinService.verifyPin(input),
+          ),
         );
-        if (pin == null || !await pinService.verifyPin(pin)) return;
+        if (pin == null) return;
       }
 
       final notes = await DBService.db.getAllNotes();

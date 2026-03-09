@@ -179,12 +179,13 @@ class _HomeScreenState extends State<HomeScreen> {
       final pin = await showDialog<String>(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const PinInputDialog(
+        builder: (context) => PinInputDialog(
           isConfirmation: false,
+          verifyPin: (input) async => await pinService.verifyPin(input),
         ),
       );
-      if (pin == null) return false;
-      return pinService.verifyPin(pin);
+      // Если диалог вернул PIN, значит он уже прошел проверку внутри
+      return pin != null;
     } finally {
       _isAuthenticating = false;
     }

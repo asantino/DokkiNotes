@@ -105,12 +105,13 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       final pin = await showDialog<String>(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const PinInputDialog(isConfirmation: false),
+        builder: (context) => PinInputDialog(
+          isConfirmation: false,
+          verifyPin: (input) async => await pinService.verifyPin(input),
+        ),
       );
 
-      if (pin != null) {
-        authenticated = await pinService.verifyPin(pin);
-      }
+      authenticated = pin != null;
     }
 
     // 4. Применяем изменения при успехе

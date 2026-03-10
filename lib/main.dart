@@ -33,10 +33,13 @@ void main() async {
 
   await AuthService.instance.refreshSession();
 
+  // Настройка системного интерфейса для Android 15 (Edge-to-edge)
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor:
+          Colors.transparent, // Добавлено для Build 20
     ),
   );
 

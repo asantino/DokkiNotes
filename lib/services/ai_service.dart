@@ -3,11 +3,11 @@ import 'dart:io';
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
-import 'package:dokki/config/api_keys.dart'; //
+import '../config/api_keys.dart';
 
 class AIService {
   static const String _baseUrl = 'https://api.openai.com/v1/chat/completions';
-  final String _apiKey = ApiKeys.openAI; //
+  final String _apiKey = ApiKeys.openAI;
 
   Future<String> sendMessage({
     required String userMessage,
@@ -22,7 +22,7 @@ class AIService {
               'Authorization': 'Bearer $_apiKey',
             },
             body: jsonEncode({
-              "model": "gpt-4o-mini",
+              "model": "gpt-4o-mini", // Оставляем: в 3 раза дешевле GPT-5 mini
               "messages": [
                 {
                   "role": "system",
@@ -32,8 +32,9 @@ class AIService {
                 ...conversationHistory,
                 {"role": "user", "content": userMessage}
               ],
-              "max_tokens": 1000,
-              "temperature": 0.7
+              "max_tokens": 200, // Оптимизировано: лимит для кратких ответов
+              "temperature":
+                  0.3 // Оптимизировано: более строгий и предсказуемый вывод
             }),
           )
           .timeout(const Duration(seconds: 15));
